@@ -161,7 +161,7 @@ function MarkdownBody(t0) {
   const elements_0 = elements;
   let t1;
   if ($[5] !== elements_0) {
-    t1 = <Box flexDirection="column" gap={1}>{elements_0}</Box>;
+    t1 = <Box flexDirection="column" gap={0}>{elements_0}</Box>;
     $[5] = elements_0;
     $[6] = t1;
   } else {
@@ -228,7 +228,7 @@ export function StreamingMarkdown({
 
   // stablePrefix is memoized inside <Markdown> via useMemo([children, ...])
   // so it never re-parses as the unstable suffix grows
-  return <Box flexDirection="column" gap={1}>
+  return <Box flexDirection="column" gap={0}>
       {stablePrefix && <Markdown>{stablePrefix}</Markdown>}
       {unstableSuffix && <Markdown>{unstableSuffix}</Markdown>}
     </Box>;

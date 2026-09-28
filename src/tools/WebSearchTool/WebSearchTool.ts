@@ -79,7 +79,7 @@ function makeToolSchema(input: Input): BetaWebSearchTool20250305 {
     name: 'web_search',
     allowed_domains: input.allowed_domains,
     blocked_domains: input.blocked_domains,
-    max_uses: 8, // Hardcoded to 8 searches maximum
+    max_uses: 30, // Allow up to 30 searches until content is sufficient
   }
 }
 
@@ -269,6 +269,7 @@ export const WebSearchTool = buildTool({
       messages: [userMessage],
       systemPrompt: asSystemPrompt([
         'You are an assistant for performing a web search tool use',
+        `The current date is ${new Date().toISOString().split('T')[0]}. You MUST use this year (${new Date().getFullYear()}) when searching for time-sensitive information such as job postings, referral codes, events, or anything that changes over time.`,
       ]),
       thinkingConfig: useHaiku
         ? { type: 'disabled' as const }

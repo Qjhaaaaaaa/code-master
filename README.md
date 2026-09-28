@@ -1,328 +1,137 @@
-# Claude Code Haha
+# CC Master — 本地 AI 编程助手（二次开发）
 
-<p align="right"><strong>中文</strong> | <a href="./README.en.md">English</a></p>
+> 基于既有 Agent CLI 内核完成本地化与二次开发：**自研 Electron 桌面端、Web 界面、额外52 个工具的桌面端工具系统、文档生成引擎与多模型接入层**，提供命令行（TUI）、Web、桌面端三种交互方式。
 
-基于 Claude Code 泄露源码修复的**本地可运行版本**，支持接入任意 Anthropic 兼容 API（如 MiniMax、OpenRouter 等）。
+![CC Master 预览](cc-master-preview.png)
 
-> 原始泄露源码无法直接运行。本仓库修复了启动链路中的多个阻塞问题，使完整的 Ink TUI 交互界面可以在本地工作。
+## 项目定位
 
-<p align="center">
-  <img src="docs/00runtime.png" alt="运行截图" width="800">
-</p>
+本项目为**二次开发**，各部分职责明确：
 
-## 目录
-
-- [功能](#功能)
-- [架构概览](#架构概览)
-- [快速开始](#快速开始)
-- [环境变量说明](#环境变量说明)
-- [降级模式](#降级模式)
-- [Computer Use 桌面控制](#computer-use-桌面控制)
-- [常见问题](#常见问题)
-- [相对于原始泄露源码的修复](#相对于原始泄露源码的修复)
-- [项目结构](#项目结构)
-- [技术栈](#技术栈)
-
----
-
-## 功能
-
-- 完整的 Ink TUI 交互界面（与官方 Claude Code 一致）
-- `--print` 无头模式（脚本/CI 场景）
-- 支持 MCP 服务器、插件、Skills
-- 支持自定义 API 端点和模型（[第三方模型使用指南](docs/third-party-models.md)）
-- **Computer Use 桌面控制**（截屏、鼠标、键盘、应用管理）— [使用指南](docs/computer-use.md)
-- 降级 Recovery CLI 模式
-
-> **Computer Use 说明**：本项目包含**魔改版的 Computer Use** 功能。官方实现依赖 Anthropic 私有原生模块，我们替换了整个底层操作层，使用 Python bridge（`pyautogui` + `mss` + `pyobjc`）实现，使得任何人都可以在 macOS 上使用。详见 [Computer Use 功能指南](docs/computer-use.md)。
-
----
-
-## 架构概览
-
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="docs/01-overall-architecture.png" alt="整体架构"><br><b>整体架构</b></td>
-    <td align="center" width="25%"><img src="docs/02-request-lifecycle.png" alt="请求生命周期"><br><b>请求生命周期</b></td>
-    <td align="center" width="25%"><img src="docs/03-tool-system.png" alt="工具系统"><br><b>工具系统</b></td>
-    <td align="center" width="25%"><img src="docs/04-multi-agent.png" alt="多 Agent 架构"><br><b>多 Agent 架构</b></td>
-  </tr>
-  <tr>
-    <td align="center" width="25%"><img src="docs/05-terminal-ui.png" alt="终端 UI"><br><b>终端 UI</b></td>
-    <td align="center" width="25%"><img src="docs/06-permission-security.png" alt="权限与安全"><br><b>权限与安全</b></td>
-    <td align="center" width="25%"><img src="docs/07-services-layer.png" alt="服务层"><br><b>服务层</b></td>
-    <td align="center" width="25%"><img src="docs/08-state-data-flow.png" alt="状态与数据流"><br><b>状态与数据流</b></td>
-  </tr>
-</table>
-
----
-
-## 快速开始
-
-### 1. 安装 Bun
-
-本项目运行依赖 [Bun](https://bun.sh)。如果你的电脑还没有安装 Bun，可以先执行下面任一方式：
-
-```bash
-# macOS / Linux（官方安装脚本）
-curl -fsSL https://bun.sh/install | bash
-```
-
-如果在精简版 Linux 环境里提示 `unzip is required to install bun`，先安装 `unzip`：
-
-```bash
-# Ubuntu / Debian
-apt update && apt install -y unzip
-```
-
-```bash
-# macOS（Homebrew）
-brew install bun
-```
-
-```powershell
-# Windows（PowerShell）
-powershell -c "irm bun.sh/install.ps1 | iex"
-```
-
-安装完成后，重新打开终端并确认：
-
-```bash
-bun --version
-```
-
-### 2. 安装项目依赖
-
-```bash
-bun install
-```
-
-### 3. 配置环境变量
-
-复制示例文件并填入你的 API Key：
-
-```bash
-cp .env.example .env
-```
-
-编辑 `.env`（以下示例使用 [MiniMax](https://platform.minimaxi.com/subscribe/token-plan?code=1TG2Cseab2&source=link) 作为 API 提供商，也可替换为其他兼容服务）：
-
-```env
-# API 认证（二选一）
-ANTHROPIC_API_KEY=sk-xxx          # 标准 API Key（x-api-key 头）
-ANTHROPIC_AUTH_TOKEN=sk-xxx       # Bearer Token（Authorization 头）
-
-# API 端点（可选，默认 Anthropic 官方）
-ANTHROPIC_BASE_URL=https://api.minimaxi.com/anthropic
-
-# 模型配置
-ANTHROPIC_MODEL=MiniMax-M2.7-highspeed
-ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7-highspeed
-ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7-highspeed
-ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7-highspeed
-
-# 超时（毫秒）
-API_TIMEOUT_MS=3000000
-
-# 禁用遥测和非必要网络请求
-DISABLE_TELEMETRY=1
-CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-```
-
-> **提示**：除了 `.env` 文件，你也可以通过 `~/.claude/settings.json` 的 `env` 字段配置环境变量。这与官方 Claude Code 的配置方式一致：
->
-> ```json
-> {
->   "env": {
->     "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
->     "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
->     "ANTHROPIC_MODEL": "MiniMax-M2.7-highspeed"
->   }
-> }
-> ```
->
-> 配置优先级：环境变量 > `.env` 文件 > `~/.claude/settings.json`
-
-### 4. 启动
-
-#### macOS / Linux
-
-```bash
-# 交互 TUI 模式（完整界面）
-./bin/claude-haha
-
-# 无头模式（单次问答）
-./bin/claude-haha -p "your prompt here"
-
-# 管道输入
-echo "explain this code" | ./bin/claude-haha -p
-
-# 查看所有选项
-./bin/claude-haha --help
-```
-
-#### Windows
-
-> **前置要求**：必须安装 [Git for Windows](https://git-scm.com/download/win)（提供 Git Bash，项目内部 Shell 执行依赖它）。
-
-Windows 下启动脚本 `bin/claude-haha` 是 bash 脚本，无法在 cmd / PowerShell 中直接运行。请使用以下方式：
-
-**方式一：PowerShell / cmd 直接调用 Bun（推荐）**
-
-```powershell
-# 交互 TUI 模式
-bun --env-file=.env ./src/entrypoints/cli.tsx
-
-# 无头模式
-bun --env-file=.env ./src/entrypoints/cli.tsx -p "your prompt here"
-
-# 降级 Recovery CLI
-bun --env-file=.env ./src/localRecoveryCli.ts
-```
-
-**方式二：Git Bash 中运行**
-
-```bash
-# 在 Git Bash 终端中，与 macOS/Linux 用法一致
-./bin/claude-haha
-```
-
-> **注意**：部分功能（语音输入、Computer Use、Sandbox 隔离等）在 Windows 上不可用，不影响核心 TUI 交互。
-
----
-
-## 环境变量说明
-
-| 变量 | 必填 | 说明 |
+| 部分 | 性质 | 说明 |
 |------|------|------|
-| `ANTHROPIC_API_KEY` | 二选一 | API Key，通过 `x-api-key` 头发送 |
-| `ANTHROPIC_AUTH_TOKEN` | 二选一 | Auth Token，通过 `Authorization: Bearer` 头发送 |
-| `ANTHROPIC_BASE_URL` | 否 | 自定义 API 端点，默认 Anthropic 官方 |
-| `ANTHROPIC_MODEL` | 否 | 默认模型 |
-| `ANTHROPIC_DEFAULT_SONNET_MODEL` | 否 | Sonnet 级别模型映射 |
-| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | 否 | Haiku 级别模型映射 |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | 否 | Opus 级别模型映射 |
-| `API_TIMEOUT_MS` | 否 | API 请求超时，默认 600000 (10min) |
-| `DISABLE_TELEMETRY` | 否 | 设为 `1` 禁用遥测 |
-| `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` | 否 | 设为 `1` 禁用非必要网络请求 |
+| 命令行内核（`src/`） | 基于既有 Agent 框架源码 | 完成本地化修复与行为定制：提示词工程、工具参数调优、搜索策略增强 |
+| 桌面端（`desktop/`） | **自研** | Electron 应用：52 个工具系统、SSE 流式对话引擎、Markdown 渲染、文档生成、多 Agent |
+| Web 界面（`web-ui/`） | **自研** | Web 图形界面（端口 3000） |
+| 多模型接入 | **自研** | LiteLLM 代理 + 直连厂商 API 双模式，运行时切换 |
 
----
+## 项目总览
 
-## 降级模式
+| 目录 | 是什么 | 启动方式 |
+|------|--------|---------|
+| `CC/`（根目录） | 命令行主体（TUI） | `bun run start` |
+| `web-ui/` | Web 图形界面 | 双击 `web-ui/start.bat` |
+| `desktop/` | 桌面端（Electron）⭐ | 双击 `CC-Desktop.bat` / `CC-Desktop.vbs` |
 
-如果完整 TUI 出现问题，可以使用简化版 readline 交互模式：
+命令行主体与 Web 通过 LiteLLM 代理（默认端口 4000）统一接入多模型（阿里云 / 小米 MiMo / DeepSeek 等）；桌面端同时支持代理与直连厂商 API 两种模式。
 
-```bash
-CLAUDE_CODE_FORCE_RECOVERY_CLI=1 ./bin/claude-haha
-```
+## 启动脚本说明
 
----
-
-## Computer Use 桌面控制
-
-本项目启用并改造了 Claude Code 的 Computer Use 功能（内部代号 "Chicago"），让 AI 模型可以直接控制你的 macOS 桌面——截屏、鼠标点击、键盘输入、应用管理。
-
-**底层改造**：官方实现依赖 Anthropic 私有原生模块（`@ant/computer-use-swift`、`@ant/computer-use-input`），本项目用 Python bridge 完全替代，使用 `pyautogui`（鼠标键盘）、`mss`（截图）、`pyobjc`（macOS API），无需任何闭源二进制。
-
-```bash
-# 确保有 Python 3 和 macOS 辅助功能/屏幕录制权限，然后直接使用：
-./bin/claude-haha
-> 帮我截个屏
-> 打开网易云音乐搜索一首歌
-```
-
-详细说明、支持的设备列表、技术架构和尝试过的方案请参考：**[Computer Use 功能指南](docs/computer-use.md)**
-
----
-
-## 相对于原始泄露源码的修复
-
-泄露的源码无法直接运行，主要修复了以下问题：
-
-| 问题 | 根因 | 修复 |
-|------|------|------|
-| TUI 不启动 | 入口脚本把无参数启动路由到了 recovery CLI | 恢复走 `cli.tsx` 完整入口 |
-| 启动卡死 | `verify` skill 导入缺失的 `.md` 文件，Bun text loader 无限挂起 | 创建 stub `.md` 文件 |
-| `--print` 卡死 | `filePersistence/types.ts` 缺失 | 创建类型桩文件 |
-| `--print` 卡死 | `ultraplan/prompt.txt` 缺失 | 创建资源桩文件 |
-| **Enter 键无响应** | `modifiers-napi` native 包缺失，`isModifierPressed()` 抛异常导致 `handleEnter` 中断，`onSubmit` 永远不执行 | 加 try-catch 容错 |
-| setup 被跳过 | `preload.ts` 自动设置 `LOCAL_RECOVERY=1` 跳过全部初始化 | 移除默认设置 |
-
----
-
-## 项目结构
-
-```
-bin/claude-haha          # 入口脚本
-preload.ts               # Bun preload（设置 MACRO 全局变量）
-.env.example             # 环境变量模板
-src/
-├── entrypoints/cli.tsx  # CLI 主入口
-├── main.tsx             # TUI 主逻辑（Commander.js + React/Ink）
-├── localRecoveryCli.ts  # 降级 Recovery CLI
-├── setup.ts             # 启动初始化
-├── screens/REPL.tsx     # 交互 REPL 界面
-├── ink/                 # Ink 终端渲染引擎
-├── components/          # UI 组件
-├── tools/               # Agent 工具（Bash, Edit, Grep 等）
-├── commands/            # 斜杠命令（/commit, /review 等）
-├── skills/              # Skill 系统
-├── services/            # 服务层（API, MCP, OAuth 等）
-├── hooks/               # React hooks
-└── utils/               # 工具函数
-```
-
----
-
-## 技术栈
-
-| 类别 | 技术 |
+| 文件 | 作用 |
 |------|------|
-| 运行时 | [Bun](https://bun.sh) |
-| 语言 | TypeScript |
-| 终端 UI | React + [Ink](https://github.com/vadimdemedes/ink) |
-| CLI 解析 | Commander.js |
-| API | Anthropic SDK |
-| 协议 | MCP, LSP |
+| `CC-Desktop.bat` | ⭐ **双击启动桌面端**：自动检查并拉起 LiteLLM 代理 → 等待端口就绪（最多 30 秒）→ 启动 Electron 应用 |
+| `CC-Desktop.vbs` | 以**静默方式**启动桌面端（无黑色命令行窗口，效果同 CC-Desktop.bat） |
+| `start-hidden.bat` | 后台静默启动命令行主体（不显示窗口） |
+| `create_shortcut.vbs` | **一键创建桌面快捷方式**：双击运行，自动在桌面生成 CC Master 快捷图标，以后双击图标即可直接启动 |
+| `web-ui/start.bat` | 启动 Web 界面（默认端口 3000，自动打开浏览器） |
 
----
+## 根目录文件说明
 
-## 常见问题
+| 文件/目录 | 作用 |
+|-----------|------|
+| `src/` | 命令行内核源码（对话主流程 query.ts、工具引擎 QueryEngine.ts、工具定义 tools.ts、TUI 界面 main.tsx） |
+| `bin/` | 命令入口（等价于 `bun run start`） |
+| `desktop/` | 桌面端 Electron 应用（自研，详见下方「桌面端」） |
+| `web-ui/` | Web 图形界面（自研） |
+| `litellm_config.yaml` | LiteLLM 多模型代理配置（默认端口 4000，想增删模型改这里） |
+| `.env` / `.env.example` | 环境变量（API Key、模型配置），复制 `.env.example` 为 `.env` 后填入密钥 |
+| `package.json` / `tsconfig.json` / `bunfig.toml` | 项目配置（依赖、脚本、TypeScript、Bun） |
+| `docs/` | 文档目录 |
+| `stubs/` | 依赖桩（本地占位实现） |
+| `runtime/` | 运行时产物（自动生成，可忽略） |
+| `cc-master-preview.png` / `cc-master.ico` | 应用预览图 / 图标 |
 
-### Q: `undefined is not an object (evaluating 'usage.input_tokens')`
+## 使用方式
 
-**原因**：`ANTHROPIC_BASE_URL` 配置不正确，API 端点返回的不是 Anthropic 协议格式的 JSON，而是 HTML 页面或其他格式。
-
-本项目使用 **Anthropic Messages API 协议**，`ANTHROPIC_BASE_URL` 必须指向一个兼容 Anthropic `/v1/messages` 接口的端点。Anthropic SDK 会自动在 base URL 后面拼接 `/v1/messages`，所以：
-
-- MiniMax：`ANTHROPIC_BASE_URL=https://api.minimaxi.com/anthropic` ✅
-- OpenRouter：`ANTHROPIC_BASE_URL=https://openrouter.ai/api` ✅
-- OpenRouter 错误写法：`ANTHROPIC_BASE_URL=https://openrouter.ai/anthropic` ❌（返回 HTML）
-
-如果你的模型供应商只支持 OpenAI 协议，需要通过 LiteLLM 等代理做协议转换，详见 [第三方模型使用指南](docs/third-party-models.md)。
-
-### Q: `Cannot find package 'bundle'`
-
-```
-error: Cannot find package 'bundle' from '.../claude-code-haha/src/entrypoints/cli.tsx'
-```
-
-**原因**：Bun 版本过低，不支持项目所需的 `bun:bundle` 等内置模块。
-
-**解决**：升级 Bun 到最新版本：
+### 命令行（TUI）
 
 ```bash
-bun upgrade
+# 1. 配置 .env：复制 .env.example 为 .env 并填入 API Key
+# 2. （可选）若走 LiteLLM 代理，先启动：
+litellm --config litellm_config.yaml --port 4000  （litellm_config.yaml需要填写具体路径，如：E:\CC\litellm_config.yaml左边只是示例)
+# 3. 启动：
+bun run start
 ```
 
-### Q: 怎么接入 OpenAI / DeepSeek / Ollama 等非 Anthropic 模型？
+### Web 界面
 
-本项目只支持 Anthropic 协议。如果模型供应商不直接支持 Anthropic 协议，需要用 [LiteLLM](https://github.com/BerriAI/litellm) 等代理做协议转换（OpenAI → Anthropic）。
+双击 `web-ui/start.bat`，浏览器自动打开 `http://localhost:3000`。
 
-详细配置步骤请参考：[第三方模型使用指南](docs/third-party-models.md)
+### 桌面端（Electron）⭐ 推荐
 
----
+双击 `CC-Desktop.bat`（或 `CC-Desktop.vbs` 静默启动），脚本自动完成：检查/拉起 LiteLLM → 等待端口就绪 → 启动 Electron。
 
-## Disclaimer
+首次运行需安装依赖：
 
-本仓库基于 2026-03-31 从 Anthropic npm registry 泄露的 Claude Code 源码。所有原始源码版权归 [Anthropic](https://www.anthropic.com) 所有。仅供学习和研究用途。
+```bash
+cd desktop
+npm install                    # Node 依赖（Electron 等）
+pip install -r requirements.txt  # Python 依赖（文档生成引擎、PDF 解析/OCR）
+```
+
+启动后在界面左边一栏 → 添加 API 地址和密钥（有填写指引与解释） → 添加模型，即可对话。
+
+## 模型与 API 配置
+
+- **走 LiteLLM 代理**：修改根目录 `litellm_config.yaml` 中对应模型的 `api_base` / `api_key` / `model` 参数即可，无需改动任何代码（LiteLLM 默认端口 4000）。
+- **直连厂商 API（不走代理）**：启动桌面端后，在界面左侧 **API configs** 与 **Models** 栏目中自行添加 API 地址、密钥与模型即可生效，运行时配置保存于 `desktop/data/state.json`，配置框架均已搭好，无需改动代码。
+
+## 核心功能
+
+- **流式输出**：SSE 推送 `delta`（增量文本）/ `tool`（工具调用）/ `done`（完成）三类事件，前端打字机式即时渲染，响应实时可见。
+- **Markdown 渲染**：内置解析器（无第三方依赖），支持表格、代码块、标题、列表、引用、图片（可放大）、链接、行内格式。
+- **工具调用循环**：模型按需调用工具，单轮可并行调用多个，失败自动重试，最多 50 轮。
+- **上下文管理**：超 10 万 token 自动压缩+完整最新12轮对话；WebFetch 结果超 2000 字符自动摘要。
+- **多模型接入**：LiteLLM 代理与直连双模式，运行时切换模型。
+- **多模态**：支持图片、PDF、Word、Excel 上传解析。
+
+## 自研工具系统（52 个工具）
+
+桌面端内置**独立于命令行内核**的完整工具系统，每个工具按「名称 + 描述 + JSON Schema + 处理函数」四要素注册，模型通过名称调用，单轮可并行调用多个。
+
+**基础工具（20 个，`desktop/src/tools.js`）：**
+
+| 工具 | 功能 |
+|------|------|
+| Bash / PowerShell | 执行 shell 命令（支持后台任务、输出读取） |
+| Read / Write / Edit | 文件读写与精确编辑 |
+| Glob / Grep / ListDir / CreateDir | 文件查找、内容搜索、目录操作 |
+| WebSearch / WebFetch | **自研双引擎搜索**：百度优先（中文结果更优）+ Bing 兜底，解析 HTML 提取结果；WebFetch 抓取网页正文 |
+| ExportPDF / ExportWord / ExportPPT | **自研文档生成引擎**：一条指令生成简历、报告、演示文稿（Python 实现，见 `document_generators/`，仍在优化） |
+| ExportTemplatePDF / Word / PPT | 模板填充：PDF 按坐标插入、Word 替换 `{{占位符}}`、PPT 保留原主题追加页面 （仍在优化）|
+| TaskCreate / TaskList / TaskGet / TaskUpdate | 任务管理 |
+
+**扩展工具（32 个，`desktop/src/tools-extended.js`）：**
+
+- **多 Agent**：Agent（子代理并行）、SendMessage、TeamCreate / TeamDelete
+- **交互控制**：AskUserQuestion、EnterPlanMode / ExitPlanMode（规划模式）、TodoWrite、Brief、Sleep
+- **代码能力**：REPL（JS/Python 执行）、LSP（代码智能）、NotebookEdit、EnterWorktree / ExitWorktree（Git 工作树）
+- **自动化**：Workflow（工作流）、ScheduleCron（定时任务）、RemoteTrigger（Webhook）、Skill（技能）、Config、SyntheticOutput、ToolSearch、TaskOutput / TaskStop
+- **MCP 协议**：MCP、McpAuth、ListMcpResources、ReadMcpResource
+- **视觉生成**：GenerateDiagram（Mermaid 流程图/时序图）、GenerateImage（SVG 插画/图表）
+
+## 桌面端（desktop/）速览
+
+- **技术栈**：Electron + Node.js，前后端通过 IPC 通信
+- **核心文件**：
+  - `src/main.js` — 主进程入口，注册 IPC 频道
+  - `src/chat.js` — 对话引擎：工具循环、上下文压缩、SSE 流式调用
+  - `src/tools.js` / `src/tools-extended.js` — **自研工具系统：20 基础 + 32 扩展 = 52 个工具**
+  - `src/providers/providers.js` — 模型提供商（OpenAI 兼容 / Anthropic 兼容 / DashScope 等）
+  - `renderer/app.js` — 前端主逻辑（流式渲染、Markdown、图表）
+- **文档生成引擎**（`document_generators/`）：6 个 Python 模块，支持 PDF / Word / PPT 生成与模板填充
+- **扩展**：
+  - `scripts/` — 脚本库（爬虫/数据处理/自动化/API 等，可自行添加）
+  - `uploads/` — 上传文件存放
+
+> 依赖说明：根目录与 `desktop/` 是两套独立项目，各有各的 `package.json` 和 `node_modules`，互不影响。桌面端必须先 `cd desktop && npm install`。

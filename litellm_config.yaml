@@ -1,0 +1,50 @@
+model_list:
+  - model_name: mimo-pro
+    litellm_params:
+      model: openai/mimo-v2.5-pro
+      api_base: https://token-plan-cn.xiaomimimo.com/v1
+      api_key: 
+    metadata:
+      description: " mimo-v2.5-pro"
+      capabilities: ["text", "code", "reasoning", "tools"]
+      status: "available"
+      tokens_remaining: true
+
+  - model_name: MIMO-V2.5
+    litellm_params:
+      model: openai/mimo-v2.5
+      api_base: https://token-plan-cn.xiaomimimo.com/v1
+      api_key: 
+    metadata:
+      description: "mimo-v2.5"
+      capabilities: ["text", "code", "reasoning"]
+      status: "available"
+      tokens_remaining: true
+
+  - model_name: qwen-vl-plus
+    litellm_params:
+      model: openai/qwen3-vl-plus
+      api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api_key: 
+    metadata:
+      description: ""
+      capabilities: ["vision", "image", "ocr", "text"]
+      status: "available"
+      tokens_remaining: true
+
+  # ???? deepseek-chat: Token not have
+  #
+  - model_name: deepseek-chat
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: 
+    metadata:
+      description: "DeepSeek - can not be use"
+      capabilities: ["text", "code", "reasoning"]
+      status: "unavailable"
+      tokens_remaining: false
+      note: "Token is out"
+
+litellm_settings:
+  drop_params: true
+  use_chat_completions_url_for_anthropic_messages: true

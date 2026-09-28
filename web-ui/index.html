@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code - Web UI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">◆</span>
+          <span class="logo-text">Claude Code</span>
+        </div>
+        <button id="newChatBtn" class="btn btn-primary btn-sm" title="New Chat">+ New Chat</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('conversations')">
+          Conversations <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="conversationsList" class="conversations-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('apis')">
+          API Configs <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="apisList" class="apis-list section-content"></div>
+        <button class="btn btn-sm btn-ghost" onclick="showApiForm()">+ Add API</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('models')">
+          Models <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="modelsList" class="models-list section-content"></div>
+        <button class="btn btn-sm btn-ghost" onclick="showModelForm()">+ Add Model</button>
+        <div id="modelStats" class="model-stats" style="display:none;"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('tasks')">
+          Tasks <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="tasksList" class="conversations-list section-content"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('tools')">
+          Tools <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="toolsList" class="tools-list section-content">
+          <div class="tool-item" title="Execute shell commands">Bash</div>
+          <div class="tool-item" title="Read file contents">Read</div>
+          <div class="tool-item" title="Edit file contents">Edit</div>
+          <div class="tool-item" title="Write/create files">Write</div>
+          <div class="tool-item" title="Find files by pattern">Glob</div>
+          <div class="tool-item" title="Search file contents">Grep</div>
+          <div class="tool-item" title="List directory">ListDir</div>
+          <div class="tool-item" title="Create directory">CreateDir</div>
+          <div class="tool-item" title="Search the web">WebSearch</div>
+          <div class="tool-item" title="Fetch URL content">WebFetch</div>
+          <div class="tool-item" title="Create task">TaskCreate</div>
+          <div class="tool-item" title="List tasks">TaskList</div>
+          <div class="tool-item" title="Get task">TaskGet</div>
+          <div class="tool-item" title="Update task">TaskUpdate</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="sidebarToggle" class="btn btn-ghost btn-sm">☰</button>
+          <span id="currentModel" class="model-badge">Loading...</span>
+          <span id="currentApi" class="api-badge"></span>
+        </div>
+        <div class="topbar-right">
+          <span id="workingDir" class="working-dir" title="Working directory"></span>
+        </div>
+      </header>
+
+      <!-- Chat area -->
+      <div id="chatContainer" class="chat-container">
+        <div id="welcomeScreen" class="welcome-screen">
+          <div class="welcome-icon">◆</div>
+          <h1>Claude Code</h1>
+          <p>Your AI coding assistant with full file system access</p>
+          <div id="setupNotice" class="setup-notice" style="display:none;">
+            <p style="color:var(--warning);margin:16px 0 8px 0;">⚠️ 需要配置才能使用</p>
+            <div class="quick-actions">
+              <button class="btn btn-primary" onclick="showApiForm()">1. 配置 API</button>
+              <button class="btn btn-primary" onclick="showModelForm()">2. 配置模型</button>
+            </div>
+          </div>
+          <div id="readyNotice" class="ready-notice" style="display:none;">
+            <p style="color:var(--success);margin:16px 0;">✓ 已就绪，可以开始对话</p>
+          </div>
+          <div class="quick-actions">
+            <button class="btn btn-ghost" onclick="sendQuickAction('List all files in the project')">Explore project files</button>
+            <button class="btn btn-ghost" onclick="sendQuickAction('Show me the project structure')">Show project structure</button>
+            <button class="btn btn-ghost" onclick="sendQuickAction('What can you help me with?')">What can you do?</button>
+          </div>
+        </div>
+
+        <div id="messagesList" class="messages-list"></div>
+      </div>
+
+      <!-- Input area -->
+      <div class="input-area">
+        <div class="input-wrapper">
+          <textarea
+            id="messageInput"
+            class="message-input"
+            placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+            rows="1"
+          ></textarea>
+          <button id="sendBtn" class="btn btn-primary send-btn">Send</button>
+        </div>
+        <div class="input-hint">
+          Claude Code Web UI — All file operations are scoped to project directory
+        </div>
+      </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="apiModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="apiModalTitle">Add API Config</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideApiForm()">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="apiEditId">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="apiName" placeholder="e.g. Anthropic, Aliyun, Local">
+          </div>
+          <div class="form-group">
+            <label>Base URL</label>
+            <input type="text" id="apiBaseUrl" placeholder="https://api.anthropic.com">
+          </div>
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-...">
+          </div>
+          <div class="form-group form-check">
+            <input type="checkbox" id="apiIsDefault">
+            <label for="apiIsDefault">Set as default</label>
+          </div>
+          <button class="btn btn-primary" onclick="saveApi()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modelModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modelModalTitle">Add Model Config</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideModelForm()">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="modelEditId">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="modelName" placeholder="e.g. qwen3.5-plus">
+          </div>
+          <div class="form-group">
+            <label>Provider</label>
+            <select id="modelProvider">
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI Compatible</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Max Tokens</label>
+            <input type="number" id="modelMaxTokens" placeholder="8192" value="8192">
+          </div>
+          <div class="form-group form-check">
+            <input type="checkbox" id="modelIsDefault">
+            <label for="modelIsDefault">Set as default</label>
+          </div>
+          <button class="btn btn-primary" onclick="saveModel()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

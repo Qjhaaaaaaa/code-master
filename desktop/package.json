@@ -1,0 +1,16 @@
+{
+  "name": "cc-desktop",
+  "version": "1.0.0",
+  "description": "CC Desktop - AI coding assistant with chat interface",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net blob: data:; img-src 'self' https: http: blob: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https: http:;">
+  <title>CC Master</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose', flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis', rankDirection: 'LR' } });
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">CC</span>
+          <span class="logo-text">Master</span>
+        </div>
+        <button id="newChatBtn" class="btn btn-primary btn-sm" title="New Chat">New Chat</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('conversations')">
+          Conversations <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="conversationsList" class="conversations-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('apis')">
+          API Configs <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="apisList" class="apis-list section-content"></div>
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button class="btn btn-sm btn-ghost" onclick="showApiForm()">Add API</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('models')">
+          Models <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="modelsList" class="models-list section-content"></div>
+        <div style="display:flex;gap:4px;margin-top:6px;">
+          <button class="btn btn-sm btn-ghost" onclick="showModelForm()">Add Model</button>
+          <button class="btn btn-sm btn-ghost" onclick="showLiteLLMModelForm()">Add LiteLLM</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('tools')">
+          Tools <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="toolsList" class="tools-list section-content"></div>
+      </div>
+
+      <!-- Folder Creator -->
+      <div class="sidebar-section">
+        <div class="section-title" onclick="toggleSection('folderCreator')">
+          Create Folder <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="folderCreator" class="section-content">
+          <div class="folder-creator">
+            <input type="text" id="folderNameInput" placeholder="Folder name (e.g. my-project)">
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-sm btn-primary" onclick="createFolder()">Create</button>
+              <button class="btn btn-sm btn-ghost" onclick="chooseSavePath()">Choose Path</button>
+            </div>
+            <div id="savePathDisplay" style="font-size:11px;color:var(--text-muted);margin-top:6px;font-family:'JetBrains Mono',monospace;word-break:break-all;"></div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <div id="sidebarResizer" class="sidebar-resizer"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="sidebarToggle" class="btn btn-ghost btn-sm">☰</button>
+          <select id="modelSwitcher" class="model-switcher" onchange="quickSwitchModel(this.value)">
+          </select>
+          <span id="currentApi" class="api-badge"></span>
+        </div>
+        <div class="topbar-right">
+          <span id="workingDir" class="working-dir" title="Working directory"></span>
+        </div>
+      </header>
+
+      <!-- Chat area -->
+      <div id="chatContainer" class="chat-container">
+        <div id="welcomeScreen" class="welcome-screen">
+          <div class="welcome-title-box">
+            <h1>CC Master</h1>
+          </div>
+          <p class="welcome-subtitle">Ask me anything...</p>
+          <div id="setupNotice" class="setup-notice" style="display:none;">
+            <p style="color:var(--warning);margin:16px 0 8px 0;font-weight:600;">Need setup to start</p>
+            <div class="quick-actions">
+              <button class="btn btn-primary" onclick="showApiForm()">1. Add API</button>
+              <button class="btn btn-primary" onclick="showModelForm()">2. Add Model</button>
+            </div>
+          </div>
+          <div id="readyNotice" class="ready-notice" style="display:none;">
+            <p style="color:var(--success);margin:16px 0;font-weight:600;">Ready to chat</p>
+          </div>
+        </div>
+
+        <div id="messagesList" class="messages-list"></div>
+      </div>
+
+      <!-- Input area -->
+      <div class="input-area">
+        <!-- File upload area -->
+        <div id="uploadArea" class="upload-area" style="display:none;" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">+</div>
+          <div class="upload-text">Drop files here or click to upload</div>
+          <div class="upload-hint">Supports images, PDF, Word, Excel, text files</div>
+        </div>
+        <input type="file" id="fileInput" style="display:none;" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.json,.md" onchange="handleFileSelect(event)">
+
+        <div id="uploadedFiles" style="display:none;margin-bottom:8px;"></div>
+
+        <div class="input-wrapper">
+          <div class="input-actions">
+            <button class="input-action-btn" onclick="toggleUploadArea()" title="Upload files">+</button>
+          </div>
+          <textarea
+            id="messageInput"
+            class="message-input"
+            placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
+            rows="1"
+          ></textarea>
+          <button id="sendBtn" class="btn btn-primary send-btn">Send</button>
+        </div>
+        <div class="input-hint">
+          CC Master — All file operations are scoped to project directory
+        </div>
+      </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="apiModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="apiModalTitle">Add API Config</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideApiForm()">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="apiEditId">
+          <div class="form-group">
+            <label>Name <span class="tooltip-icon" data-tooltip="用于显示的 API 名称，可以随便取，方便自己辨认即可。例如：LiteLLM、Anthropic、Aliyun 等。">?</span></label>
+            <input type="text" id="apiName" placeholder="e.g. LiteLLM, Anthropic, Aliyun">
+          </div>
+          <div class="form-group">
+            <label>Base URL <span class="tooltip-icon" data-tooltip="API 的接口地址。填 http://localhost:4000 表示走本地 LiteLLM 代理；填其他地址则直连该 API 服务（如 https://api.openai.com、https://dashscope.aliyuncs.com/compatible-mode）。系统会自动在末尾补上 /v1。">?</span></label>
+            <input type="text" id="apiBaseUrl" placeholder="http://localhost:4000">
+          </div>
+          <div class="form-group">
+            <label>API Key <span class="tooltip-icon" data-tooltip="API 密钥。如果走本地 LiteLLM 代理，随便填一个（如 sk-lite）即可；如果直连第三方 API，则填对应平台的真实密钥。">?</span></label>
+            <input type="password" id="apiKey" placeholder="sk-...">
+          </div>
+          <div class="form-group form-check">
+            <input type="checkbox" id="apiIsDefault">
+            <label for="apiIsDefault">Set as default</label>
+          </div>
+          <div id="testApiResult" style="font-size:12px;display:none;padding:8px;border-radius:4px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="testApiConnection()">Test Connection</button>
+            <button class="btn btn-primary" onclick="saveApi()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modelModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modelModalTitle">Add Model Config</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideModelForm()">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="modelEditId">
+          <div class="form-group">
+            <label>Name <span class="tooltip-icon" data-tooltip="模型名称，必须与实际调用时的名称一致。如果走 LiteLLM 代理，填 litellm_config.yaml 里的 model_name 字段（如 mimo-pro、deepseek-chat），注意不是 model 字段（如 openai/mimo-v2.5-pro）。如果直连 API，填平台支持的模型 ID（如 gpt-4o、deepseek-chat、qwen3-vl-plus）。">?</span></label>
+            <input type="text" id="modelName" placeholder="e.g. mimo-pro, deepseek-chat">
+          </div>
+          <div class="form-group">
+            <label>Provider <span class="tooltip-icon" data-tooltip="API 协议类型。大多数情况选 OpenAI Compatible 即可（兼容 OpenAI 接口格式），包括 DeepSeek、阿里云 DashScope、小米 MiMo 等。只有直连 Anthropic 官方 API 时才选 Anthropic。">?</span></label>
+            <select id="modelProvider">
+              <option value="openai">OpenAI Compatible</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Max Tokens <span class="tooltip-icon" data-tooltip="单次回复的最大 token 数量。默认 8192，建议设为 16384 以减少回复被截断。注意：部分模型有上限，超出会被自动限制。">?</span></label>
+            <input type="number" id="modelMaxTokens" placeholder="16384" value="16384">
+          </div>
+          <div class="form-group form-check">
+            <input type="checkbox" id="modelIsDefault">
+            <label for="modelIsDefault">Set as default</label>
+          </div>
+          <button class="btn btn-primary" onclick="saveModel()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Model to LiteLLM Config Modal -->
+    <div id="litellmModelModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Model to LiteLLM Config</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideLiteLLMModelForm()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Model Name <span class="tooltip-icon" data-tooltip="模型别名，即你在聊天时选择的名称。对应 litellm_config.yaml 里的 model_name 字段。可以随便取，例如 my-gpt4、my-claude、mimo-pro 等，方便自己辨认即可。">?</span></label>
+            <input type="text" id="litellmModelName" placeholder="e.g. my-gpt4, my-claude">
+          </div>
+          <div class="form-group">
+            <label>Provider / Model ID <span class="tooltip-icon" data-tooltip="模型提供方和真实模型 ID，对应 litellm_config.yaml 里的 model 字段。格式为「提供方/模型ID」，例如 openai/gpt-4o、deepseek/deepseek-chat、anthropic/claude-sonnet-4-20250514。选择后会自动拼接。">?</span></label>
+            <select id="litellmProvider">
+              <option value="openai">OpenAI (openai/model-id)</option>
+              <option value="deepseek">DeepSeek (deepseek/model-id)</option>
+              <option value="anthropic">Anthropic (anthropic/model-id)</option>
+              <option value="openai">Xiaomi MiMo (openai/mimo-v2.5-pro)</option>
+              <option value="openai">Aliyun DashScope (openai/qwen3-vl-plus)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>API Base URL <span class="tooltip-icon" data-tooltip="可选。留空则使用 Provider 默认地址。如果模型厂商提供自定义接口（如小米 MiMo、阿里云 DashScope），在这里填写。注意：API Base 要和上面的 Provider 协议对应——选 OpenAI 就填 OpenAI 兼容地址（通常以 /v1 结尾），选 Anthropic 就填 Anthropic 兼容地址。同一个模型可能同时提供两种地址，选哪个都行，但 Provider 要匹配。">?</span></label>
+            <input type="text" id="litellmApiBase" placeholder="https://api.openai.com/v1">
+          </div>
+          <div class="form-group">
+            <label>API Key <span class="tooltip-icon" data-tooltip="该模型对应的 API 密钥。每个模型可以有独立的密钥，也可以在 LiteLLM 全局配置中统一设置。">?</span></label>
+            <input type="password" id="litellmApiKey" placeholder="sk-...">
+          </div>
+          <div id="litellmModelResult" style="font-size:12px;display:none;padding:8px;border-radius:4px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="addLiteLLMModel()">Add to Config</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save Path Chooser Modal -->
+    <div id="savePathModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Choose Save Path</h2>
+          <button class="btn btn-ghost btn-sm" onclick="hideSavePathModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Save Location</label>
+            <input type="text" id="savePathInput" placeholder="E:\my-output">
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);">Created folders will be saved to this path. You can drag the folder from here to Desktop.</p>
+          <button class="btn btn-primary" onclick="setSavePath()">Set Path</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

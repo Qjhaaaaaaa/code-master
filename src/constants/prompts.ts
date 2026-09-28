@@ -177,7 +177,7 @@ function getSimpleIntroSection(
 ): string {
   // eslint-disable-next-line custom-rules/prompt-spacing
   return `
-You are an interactive agent that helps users ${outputStyleConfig !== null ? 'according to your "Output Style" below, which describes how you should respond to user queries.' : 'with software engineering tasks.'} Use the instructions below and the tools available to you to assist the user.
+You are an interactive agent that helps users ${outputStyleConfig !== null ? 'according to your "Output Style" below, which describes how you should respond to user queries.' : 'with software engineering tasks.'} Use the instructions below and the tools available to you to assist the user. For simple greetings or casual conversation, respond naturally without using any tools.
 
 ${CYBER_RISK_INSTRUCTION}
 IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are for helping the user with programming. You may use URLs provided by the user in their messages or local files.`
@@ -219,7 +219,7 @@ function getSimpleDoingTasksSection(): string {
   ]
 
   const items = [
-    `The user will primarily request you to perform software engineering tasks. These may include solving bugs, adding new functionality, refactoring code, explaining code, and more. When given an unclear or generic instruction, consider it in the context of these software engineering tasks and the current working directory. For example, if the user asks you to change "methodName" to snake case, do not reply with just "method_name", instead find the method in the code and modify the code.`,
+    `The user will primarily request you to perform software engineering tasks. These may include solving bugs, adding new functionality, refactoring code, explaining code, and more.`,
     `You are highly capable and often allow users to complete ambitious tasks that would otherwise be too complex or take too long. You should defer to user judgement about whether a task is too large to attempt.`,
     // @[MODEL LAUNCH]: capy v8 assertiveness counterweight (PR #24302) — un-gate once validated on external via A/B
     ...(process.env.USER_TYPE === 'ant'
@@ -308,6 +308,7 @@ function getUsingYourToolsSection(enabledTools: Set<string>): string {
       ? `Break down and manage your work with the ${taskToolName} tool. These tools are helpful for planning your work and helping the user track your progress. Mark each task as completed as soon as you are done with the task. Do not batch up multiple tasks before marking them as completed.`
       : null,
     `You can call multiple tools in a single response. If you intend to call multiple tools and there are no dependencies between them, make all independent tool calls in parallel. Maximize use of parallel tool calls where possible to increase efficiency. However, if some tool calls depend on previous calls to inform dependent values, do NOT call these tools in parallel and instead call them sequentially. For instance, if one operation must complete before another starts, run these operations sequentially instead.`,
+    `IMPORTANT: For simple greetings (e.g. "你好", "hello", "hi", "嗨"), casual conversation, or questions that do not require code/file operations, do NOT call any tools. Simply respond with a conversational reply.`,
   ].filter(item => item !== null)
 
   return [`# Using your tools`, ...prependBullets(items)].join(`\n`)
@@ -424,12 +425,22 @@ Focus text output on:
 - High-level status updates at natural milestones
 - Errors or blockers that change the plan
 
-If you can say it in one sentence, don't use three. Prefer short, direct sentences over long explanations. This does not apply to code or tool calls.`
+If you can say it in one sentence, don't use three. Prefer short, direct sentences over long explanations. This does not apply to code or tool calls.
+
+When presenting structured data, use proper markdown tables with a header row and separator row. Example:
+
+| Column A | Column B |
+|----------|----------|
+| value 1  | value 2  |
+| value 3  | value 4  |
+
+Do NOT output bare pipe-separated text without the separator row — it will not render as a table.`
 }
 
 function getSimpleToneAndStyleSection(): string {
   const items = [
     `Only use emojis if the user explicitly requests it. Avoid using emojis in all communication unless asked.`,
+    `When the user sends a simple greeting or casual message, respond naturally and conversationally. Do not use any tools for greetings.`,
     process.env.USER_TYPE === 'ant'
       ? null
       : `Your responses should be short and concise.`,
@@ -449,7 +460,7 @@ export async function getSystemPrompt(
 ): Promise<string[]> {
   if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
     return [
-      `You are Claude Code, Anthropic's official CLI for Claude.\n\nCWD: ${getCwd()}\nDate: ${getSessionStartDate()}`,
+      `You are CC MASTER, a CLI tool exclusively for Q.\n\nCWD: ${getCwd()}\nDate: ${getSessionStartDate()}`,
     ]
   }
 
@@ -469,7 +480,7 @@ export async function getSystemPrompt(
   ) {
     logForDebugging(`[SystemPrompt] path=simple-proactive`)
     return [
-      `\nYou are an autonomous agent. Use the available tools to do useful work.
+      `\nYou are an autonomous agent. Use the available tools to do useful work. You can also use available scripts to complete tasks.
 
 ${CYBER_RISK_INSTRUCTION}`,
       getSystemRemindersSection(),

@@ -69,21 +69,9 @@
         "zod": "^4.3.6",
       },
     },
-    "packages/computer-use-input": {
-      "name": "@ant/computer-use-input",
-      "version": "0.1.0",
-    },
-    "packages/computer-use-swift": {
-      "name": "@ant/computer-use-swift",
-      "version": "0.1.0",
-    },
   },
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.2.5", "https://registry.npmmirror.com/@alcalzone/ansi-tokenize/-/ansi-tokenize-0.2.5.tgz", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-3NX/MpTdroi0aKz134A6RC2Gb2iXVECN4QaAXnvCIxxIm3C3AVB1mkUe8NaaiyvOpDfsrqWhYtj+Q6a62RrTsw=="],
-
-    "@ant/computer-use-input": ["@ant/computer-use-input@workspace:packages/computer-use-input"],
-
-    "@ant/computer-use-swift": ["@ant/computer-use-swift@workspace:packages/computer-use-swift"],
 
     "@anthropic-ai/sandbox-runtime": ["@anthropic-ai/sandbox-runtime@0.0.44", "https://registry.npmmirror.com/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.44.tgz", { "dependencies": { "@pondwader/socks5-server": "^1.0.10", "@types/lodash-es": "^4.17.12", "commander": "^12.1.0", "lodash-es": "^4.17.23", "shell-quote": "^1.8.3", "zod": "^3.24.1" }, "bin": { "srt": "dist/cli.js" } }, "sha512-mmyjq0mzsHnQZyiU+FGYyaiJcPckuQpP78VB8iqFi2IOu8rcb9i5SmaOKyJENJNfY8l/1grzLMQgWq4Apvmozw=="],
 

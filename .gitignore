@@ -6,3 +6,32 @@ node_modules
 # Computer Use runtime (auto-generated)
 .runtime/
 extracted-natives/
+
+# Runtime state with API keys (desktop & web-ui)
+data/
+desktop/data/
+web-ui/state.json
+web-ui/test_fixes.ts
+
+# Local settings
+.claude/settings.local.json
+
+# Python
+__pycache__/
+scan_privacy.py
+
+desktop/scripts/bazi/
+desktop/scripts/other/
+desktop/scripts/file_ops/
+desktop/meihua_poem/
+desktop/backup.py
+desktop/fix2.py
+desktop/restore_prompt.py
+
+others
+
+desktop/uploads/
+desktop/temp_image.jpg
+desktop/test_screenshot.png
+desktop/temp_image.*
+*.tmp
